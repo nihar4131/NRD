@@ -401,4 +401,37 @@ function renderProgress(c) {
   const today = todayKey();
   const hl = document.getElementById('habitList');
   if (habits.length === 0) hl.innerHTML = '<li class="empty">Add a habit above, then tick it each day.</li>';
-  habits.forEach((h, 
+  habits.forEach((h, i) => {
+    const li = document.createElement('li');
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.checked = !!(h.days && h.days[today]);
+    check.onchange = () => {
+      h.days = h.days || {};
+      if (check.checked) h.days[today] = true; else delete h.days[today];
+      data.habits = habits; saveData();
+      renderProgress(c);
+    };
+    const span = document.createElement('span');
+    span.textContent = h.name;
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = 'X';
+    del.onclick = () => { habits.splice(i, 1); data.habits = habits; saveData(); renderProgress(c); };
+    li.append(check, span, del);
+    hl.appendChild(li);
+  });
+
+  document.getElementById('habitForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('habitName').value.trim();
+    if (!name) return;
+    habits.push({ name, days: {} });
+    data.habits = habits; saveData();
+    renderProgress(c);
+  });
+}
+</script>
+</body>
+</html>
+                  
