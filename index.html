@@ -6,27 +6,30 @@
 <title>My Life App</title>
 <style>
 * { box-sizing: border-box; }
-body { margin: 0; font-family: sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; overflow: hidden; }
+html, body { margin: 0; height: 100%; font-family: sans-serif; background: #0f172a; color: #e2e8f0; overflow: hidden; }
 #lock { position: fixed; inset: 0; background: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; animation: fadeIn 0.8s ease; }
 #lock input { padding: 14px; font-size: 18px; border-radius: 10px; border: none; width: 220px; text-align: center; margin-bottom: 12px; }
 #lock button { padding: 12px 24px; font-size: 16px; border: none; border-radius: 10px; background: #2563eb; color: white; }
 #lockMsg { color: #f87171; height: 20px; }
-#app { display: none; height: 100vh; flex-direction: column; animation: fadeIn 0.6s ease; }
-#content { flex: 1; overflow-y: auto; padding: 16px; }
+#app { position: fixed; inset: 0; display: none; flex-direction: column; animation: fadeIn 0.6s ease; }
+#content { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 8px; }
 h1 { font-size: 22px; text-align: center; }
-#form { display: flex; gap: 8px; }
-#input { flex: 1; padding: 12px; font-size: 16px; border: none; border-radius: 8px; }
+.row { display: flex; gap: 8px; margin-bottom: 8px; }
+.row input { flex: 1; padding: 12px; font-size: 16px; border: none; border-radius: 8px; min-width: 0; }
 .addBtn { padding: 12px 16px; font-size: 16px; border: none; border-radius: 8px; background: #2563eb; color: white; }
-ul { list-style: none; padding: 0; margin-top: 16px; }
+ul { list-style: none; padding: 0; margin: 12px 0 0 0; }
 li { display: flex; align-items: center; gap: 10px; background: #1e293b; padding: 12px; margin-bottom: 8px; border-radius: 10px; animation: fadeIn 0.4s ease; }
-li span { flex: 1; }
+li span { flex: 1; word-break: break-word; }
 li.done span { text-decoration: line-through; color: #64748b; }
 .del { background: #dc2626; border: none; color: white; padding: 6px 10px; border-radius: 6px; }
-nav { display: flex; justify-content: space-around; background: #1e293b; padding: 8px 4px; }
-.tab { background: none; border: none; color: #94a3b8; text-align: center; font-size: 12px; padding: 4px; transition: transform 0.3s; }
+nav { display: flex; justify-content: space-around; background: #1e293b; padding: 8px 2px; flex-shrink: 0; }
+.tab { background: none; border: none; color: #94a3b8; text-align: center; font-size: 11px; padding: 4px 2px; transition: transform 0.3s; }
 .tab.active { color: #60a5fa; transform: scale(1.1); }
 .tab .name { display: block; margin-top: 4px; }
-.pic { width: 36px; height: 36px; border-radius: 50%; background: #334155; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; }
+.pic { width: 40px; height: 40px; border-radius: 50%; background: #334155; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; }
+.pic img { width: 100%; height: 100%; object-fit: cover; }
+.empty { text-align: center; color: #64748b; margin-top: 24px; }
+.total { text-align: center; font-size: 18px; margin: 12px 0; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
@@ -45,23 +48,25 @@ nav { display: flex; justify-content: space-around; background: #1e293b; padding
 const PASSWORD = '1234';
 
 const tabs = [
-  { name: 'To-Do Lists', person: 'Shivaji Maharaj', icon: '🚩' },
-  { name: 'Reminders', person: 'Zoro', icon: '⚔️' },
-  { name: 'CFA Study Log', person: 'Warren Buffett', icon: '📈' },
-  { name: 'Expenses', person: 'Jim Rogers', icon: '💰' },
-  { name: 'AI', person: 'Lionel Messi', icon: '🤖' },
-  { name: 'Progress', person: 'John Cena', icon: '🏆' }
+  { name: 'To-Do Lists', person: 'Shivaji Maharaj', img: 'https://voteforshivajijayanti.com/wp-content/uploads/2024/06/Chhatrapati-Shivaji-Maharaj-1.jpg' },
+  { name: 'Reminders', person: 'Zoro', img: 'https://static.wikia.nocookie.net/glad-you-came/images/a/a2/Zoro.png/revision/latest?cb=20230710081928' },
+  { name: 'CFA Study Log', person: 'Warren Buffett', img: 'https://www.givingpledge.org/wp-content/uploads/2025/03/Buffett_500x500.jpg' },
+  { name: 'Expenses', person: 'Jim Rogers', img: 'https://aurumbureau.com/wp-content/uploads/2024/07/Aurum-Speakers-Bureau-Jim-Rogers.jpg' },
+  { name: 'AI', person: 'Lionel Messi', img: 'https://static.dw.com/image/79570285_605.jpg' },
+  { name: 'Progress', person: 'John Cena', img: 'https://hips.hearstapps.com/hmg-prod/images/john-cena-is-seen-on-the-set-of-little-brother-in-soho-on-news-photo-1763404519.pjpeg?crop=0.835xw:1.00xh;0.151xw,0&resize=640:*' }
 ];
 
 let current = 0;
-let tasks = {};
+const data = JSON.parse(localStorage.getItem('lifeAppData') || '{}');
+
+function saveData() {
+  localStorage.setItem('lifeAppData', JSON.stringify(data));
+}
 
 function unlock() {
-  const val = document.getElementById('pw').value;
-  if (val === PASSWORD) {
+  if (document.getElementById('pw').value === PASSWORD) {
     document.getElementById('lock').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    buildNav();
     showTab(0);
   } else {
     document.getElementById('lockMsg').textContent = 'Wrong password';
@@ -71,7 +76,7 @@ function unlock() {
 document.getElementById('unlock').onclick = unlock;
 document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
 
-// Lock again when the app goes to the background
+// Lock again when you leave the app
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     document.getElementById('app').style.display = 'none';
@@ -87,7 +92,7 @@ function buildNav() {
   tabs.forEach((t, i) => {
     const b = document.createElement('button');
     b.className = 'tab' + (i === current ? ' active' : '');
-    b.innerHTML = '<span class="pic">' + t.icon + '</span><span class="name">' + t.name + '</span>';
+    b.innerHTML = '<span class="pic"><img src="' + t.img + '" alt="' + t.person + '"></span><span class="name">' + t.name + '</span>';
     b.onclick = () => showTab(i);
     nav.appendChild(b);
   });
@@ -96,42 +101,101 @@ function buildNav() {
 function showTab(i) {
   current = i;
   buildNav();
-  const content = document.getElementById('content');
-  if (i === 0) {
-    renderTodo(content);
-  } else {
-    content.innerHTML = '<h1>' + tabs[i].name + '</h1><p style="text-align:center">Coming in the next version.</p>';
-  }
+  const c = document.getElementById('content');
+  if (i === 0) renderList(c, 'todo', 'To-Do Lists', 'Add a task...');
+  else if (i === 1) renderList(c, 'reminders', 'Reminders', 'Add a reminder...');
+  else if (i === 2) renderStudy(c);
+  else if (i === 3) renderExpenses(c);
+  else c.innerHTML = '<h1>' + tabs[i].name + '</h1><p class="empty">Coming in the next version.</p>';
 }
 
-function renderTodo(container) {
-  const list = tasks.todo || [];
-  container.innerHTML = '<h1>To-Do Lists</h1><form id="form"><input id="input" placeholder="Add a task..." autocomplete="off"><button class="addBtn" type="submit">Add</button></form><ul id="list"></ul>';
-  const ul = document.getElementById('list');
-  list.forEach((task, i) => {
+// Checklist used by To-Do and Reminders
+function renderList(c, key, title, placeholder) {
+  const list = data[key] || [];
+  c.innerHTML = '<h1>' + title + '</h1><form class="row" id="form"><input id="input" placeholder="' + placeholder + '" autocomplete="off"><button class="addBtn" type="submit">Add</button></form><ul id="ul"></ul>';
+  const ul = document.getElementById('ul');
+  if (list.length === 0) ul.innerHTML = '<li class="empty">Nothing here yet.</li>';
+  list.forEach((item, i) => {
     const li = document.createElement('li');
-    if (task.done) li.classList.add('done');
+    if (item.done) li.classList.add('done');
     const check = document.createElement('input');
     check.type = 'checkbox';
-    check.checked = task.done;
-    check.onchange = () => { list[i].done = check.checked; tasks.todo = list; renderTodo(container); };
+    check.checked = item.done;
+    check.onchange = () => { list[i].done = check.checked; data[key] = list; saveData(); renderList(c, key, title, placeholder); };
     const span = document.createElement('span');
-    span.textContent = task.text;
+    span.textContent = item.text;
     const del = document.createElement('button');
     del.className = 'del';
     del.textContent = 'X';
-    del.onclick = () => { list.splice(i, 1); tasks.todo = list; renderTodo(container); };
+    del.onclick = () => { list.splice(i, 1); data[key] = list; saveData(); renderList(c, key, title, placeholder); };
     li.append(check, span, del);
     ul.appendChild(li);
   });
   document.getElementById('form').addEventListener('submit', e => {
     e.preventDefault();
-    const input = document.getElementById('input');
-    const v = input.value.trim();
+    const v = document.getElementById('input').value.trim();
     if (!v) return;
     list.push({ text: v, done: false });
-    tasks.todo = list;
-    renderTodo(container);
+    data[key] = list; saveData();
+    renderList(c, key, title, placeholder);
+  });
+}
+
+// CFA study log: topic and hours
+function renderStudy(c) {
+  const log = data.study || [];
+  const total = log.reduce((sum, s) => sum + Number(s.hours), 0);
+  c.innerHTML = '<h1>CFA Study Log</h1><form class="row" id="form"><input id="topic" placeholder="Topic" autocomplete="off"><input id="hours" type="number" step="0.5" placeholder="Hours" style="max-width:90px"><button class="addBtn" type="submit">Log</button></form><div class="total">Total: ' + total + ' hours</div><ul id="ul"></ul>';
+  const ul = document.getElementById('ul');
+  if (log.length === 0) ul.innerHTML = '<li class="empty">No study sessions yet.</li>';
+  log.forEach((s, i) => {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = s.topic + ' - ' + s.hours + ' h';
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = 'X';
+    del.onclick = () => { log.splice(i, 1); data.study = log; saveData(); renderStudy(c); };
+    li.append(span, del);
+    ul.appendChild(li);
+  });
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const topic = document.getElementById('topic').value.trim();
+    const hours = document.getElementById('hours').value;
+    if (!topic || !hours) return;
+    log.push({ topic, hours });
+    data.study = log; saveData();
+    renderStudy(c);
+  });
+}
+
+// Expenses: item and amount in rupees
+function renderExpenses(c) {
+  const items = data.expenses || [];
+  const total = items.reduce((sum, x) => sum + Number(x.amount), 0);
+  c.innerHTML = '<h1>Expenses</h1><form class="row" id="form"><input id="item" placeholder="What did you spend on?" autocomplete="off"><input id="amount" type="number" placeholder="Rs" style="max-width:90px"><button class="addBtn" type="submit">Add</button></form><div class="total">Total: Rs ' + total + '</div><ul id="ul"></ul>';
+  const ul = document.getElementById('ul');
+  if (items.length === 0) ul.innerHTML = '<li class="empty">No expenses yet.</li>';
+  items.forEach((x, i) => {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = x.item + ' - Rs ' + x.amount;
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.textContent = 'X';
+    del.onclick = () => { items.splice(i, 1); data.expenses = items; saveData(); renderExpenses(c); };
+    li.append(span, del);
+    ul.appendChild(li);
+  });
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const item = document.getElementById('item').value.trim();
+    const amount = document.getElementById('amount').value;
+    if (!item || !amount) return;
+    items.push({ item, amount });
+    data.expenses = items; saveData();
+    renderExpenses(c);
   });
 }
 </script>
