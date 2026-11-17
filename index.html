@@ -30,6 +30,10 @@ nav { display: flex; justify-content: space-around; background: #1e293b; padding
 .pic img { width: 100%; height: 100%; object-fit: cover; }
 .empty { text-align: center; color: #64748b; margin-top: 24px; }
 .total { text-align: center; font-size: 18px; margin: 12px 0; }
+.msg { padding: 10px 12px; border-radius: 12px; margin-bottom: 8px; max-width: 85%; word-break: break-word; }
+.msg.user { background: #2563eb; margin-left: auto; }
+.msg.bot { background: #1e293b; }
+#msgs { margin-top: 12px; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
@@ -45,7 +49,7 @@ nav { display: flex; justify-content: space-around; background: #1e293b; padding
   <nav id="nav"></nav>
 </div>
 <script>
-const PASSWORD = '1234';
+const PASSWORD = '8288';
 
 const tabs = [
   { name: 'To-Do Lists', person: 'Shivaji Maharaj', img: 'https://voteforshivajijayanti.com/wp-content/uploads/2024/06/Chhatrapati-Shivaji-Maharaj-1.jpg' },
@@ -55,6 +59,9 @@ const tabs = [
   { name: 'AI', person: 'Lionel Messi', img: 'https://static.dw.com/image/79570285_605.jpg' },
   { name: 'Progress', person: 'John Cena', img: 'https://hips.hearstapps.com/hmg-prod/images/john-cena-is-seen-on-the-set-of-little-brother-in-soho-on-news-photo-1763404519.pjpeg?crop=0.835xw:1.00xh;0.151xw,0&resize=640:*' }
 ];
+
+const DEFAULT_AGENTS = ['CFA Questions', 'Overthinking', 'Finance & Business', 'General Assistant', 'Finance News', 'English Vocabulary'];
+const MAX_EXTRA_AGENTS = 3;
 
 let current = 0;
 const data = JSON.parse(localStorage.getItem('lifeAppData') || '{}');
@@ -106,6 +113,7 @@ function showTab(i) {
   else if (i === 1) renderList(c, 'reminders', 'Reminders', 'Add a reminder...');
   else if (i === 2) renderStudy(c);
   else if (i === 3) renderExpenses(c);
+  else if (i === 4) renderAI(c);
   else c.innerHTML = '<h1>' + tabs[i].name + '</h1><p class="empty">Coming in the next version.</p>';
 }
 
@@ -196,6 +204,85 @@ function renderExpenses(c) {
     items.push({ item, amount });
     data.expenses = items; saveData();
     renderExpenses(c);
+  });
+}
+
+// AI tab: agent list
+function getAgents() {
+  if (!data.agents) data.agents = [...DEFAULT_AGENTS];
+  return data.agents;
+}
+
+function renderAI(c) {
+  const agents = getAgents();
+  c.innerHTML = '<h1>AI Agents</h1><ul id="ul"></ul><form class="row" id="form"><input id="newAgent" placeholder="Add an agent (up to 3 extra)" autocomplete="off"><button class="addBtn" type="submit">Add</button></form>';
+  const ul = document.getElementById('ul');
+  agents.forEach((name, i) => {
+    const li = document.createElement('li');
+    const span = document.createElement('span');
+    span.textContent = name;
+    span.onclick = () => renderChat(c, i);
+    li.appendChild(span);
+    if (i >= DEFAULT_AGENTS.length) {
+      const del = document.createElement('button');
+      del.className = 'del';
+      del.textContent = 'X';
+      del.onclick = () => { agents.splice(i, 1); data.agents = agents; saveData(); renderAI(c); };
+      li.appendChild(del);
+    }
+    ul.appendChild(li);
+  });
+  document.getElementById('form').addEventListener('submit', e => {
+    e.preventDefault();
+    const v = document.getElementById('newAgent').value.trim();
+    if (!v) return;
+    if (agents.length >= DEFAULT_AGENTS.length + MAX_EXTRA_AGENTS) {
+      document.getElementById('newAgent').placeholder = 'Limit reached: 3 extra agents';
+      return;
+    }
+    agents.push(v); data.agents = agents; saveData();
+    renderAI(c);
+  });
+}
+
+// AI tab: chat with one agent (text and mic input)
+function renderChat(c, i) {
+  const agents = getAgents();
+  const name = agents[i];
+  data.chats = data.chats || {};
+  const msgs = data.chats[name] || [];
+  c.innerHTML = '<h1>' + name + '</h1><button class="addBtn" id="back">Back</button><div id="msgs"></div><form class="row" id="chatForm"><input id="msg" placeholder="Type or tap Mic..." autocomplete="off"><button class="addBtn" type="button" id="mic">Mic</button><button class="addBtn" type="submit">Send</button></form>';
+
+  document.getElementById('back').onclick = () => renderAI(c);
+
+  const box = document.getElementById('msgs');
+  if (msgs.length === 0) box.innerHTML = '<p class="empty">Ask something to start.</p>';
+  msgs.forEach(m => {
+    const d = document.createElement('div');
+    d.className = 'msg ' + (m.from === 'me' ? 'user' : 'bot');
+    d.textContent = m.text;
+    box.appendChild(d);
+  });
+  box.scrollTop = box.scrollHeight;
+
+  // Voice input using the browser's built-in speech recognition (no key needed in Chrome)
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  document.getElementById('mic').onclick = () => {
+    if (!SR) { alert('Voice input works in Chrome on Android. Please use Chrome.'); return; }
+    const rec = new SR();
+    rec.lang = 'en-IN';
+    rec.onresult = e => { document.getElementById('msg').value = e.results[0][0].transcript; };
+    rec.start();
+  };
+
+  document.getElementById('chatForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = document.getElementById('msg').value.trim();
+    if (!text) return;
+    msgs.push({ from: 'me', text });
+    msgs.push({ from: 'bot', text: 'AI replies are not connected yet. This needs an AI service and an API key, which we will add in a later version.' });
+    data.chats[name] = msgs; saveData();
+    renderChat(c, i);
   });
 }
 </script>
